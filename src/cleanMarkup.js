@@ -102,6 +102,12 @@ export async function cleanMarkup (html) {
         html = await replaceAsync(html, matchYouTube, replaceYouTube)
       }
       return html
+    }).catch((err) => {
+      // YouTube embed enrichment is optional. If the lookup fails (network
+      // error, blocked request, dead API key, quota, etc.) don't abort the
+      // whole build - just leave the original embed markup untouched.
+      console.error('Error fetching Youtube info, skipping embed enrichment:', err)
+      return html
     })
   }
 

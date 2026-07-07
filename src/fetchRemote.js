@@ -42,11 +42,21 @@ if (typeof safari !== 'undefined') {
 function fetchBackground (url, responseType) {
   return new Promise((resolve, reject) => {
     if (typeof chrome !== 'undefined' && chrome.runtime.sendMessage) {
-      chrome.runtime.sendMessage(url, function (objurl) {
-        resolve(fetch(objurl, responseType).then((data) => {
-          URL.revokeObjectURL(objurl)
-          return data
-        }))
+      chrome.runtime.sendMessage(url, function (response) {
+        if (!response || !response.ok) {
+          resolve(null)
+          return
+        }
+        const bytes = new Uint8Array(response.data)
+        if (responseType === 'arraybuffer') {
+          // Return the underlying ArrayBuffer
+          resolve(bytes.buffer)
+        } else if (responseType === 'blob') {
+          resolve(new Blob([bytes]))
+        } else {
+          // Decode as text (e.g. YouTube API JSON)
+          resolve(new TextDecoder('utf-8').decode(bytes))
+        }
       })
     } else if (typeof safari !== 'undefined') {
       safariQueue[url] = { cb: resolve, responseType: responseType }

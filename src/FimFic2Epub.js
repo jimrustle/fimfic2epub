@@ -228,8 +228,13 @@ class FimFic2Epub extends EventEmitter {
     this.pcache.chapters = fetch(url).then((html) => {
       let p = Promise.resolve()
       const matchChapter = /<article class="chapter">[\s\S]*?<\/header>([\s\S]*?)<\/article>/g
+      let matchedChapters = 0
       for (let ma, i = 0; (ma = matchChapter.exec(html)); i++) {
+        matchedChapters++
         const ch = this.storyInfo.chapters[i]
+        if (!ch) {
+          continue
+        }
         let chapterContent = ma[1]
         chapterContent = chapterContent.replace(/<footer>[\s\S]*?<\/footer>/g, '').trim()
 
@@ -269,12 +274,20 @@ class FimFic2Epub extends EventEmitter {
           return utils.sleep(0)
         })
       }
+      if (matchedChapters !== chapterCount) {
+        throw new Error(
+          'Could not parse story chapters: expected ' + chapterCount +
+          ' chapter(s) but found ' + matchedChapters + ' in the downloaded HTML. ' +
+          'Fimfiction may have changed its page format or blocked the download endpoint.'
+        )
+      }
       return p
     }).then(() => {
       this.totalWordCount = this.storyInfo.chapters.reduce((count, ch) => count + ch.realWordCount, 0)
       this.pcache.chapters = null
     }).catch((err) => {
-      console.error(err)
+      this.pcache.chapters = null
+      throw err
     })
 
     return this.pcache.chapters
@@ -697,52 +710,15 @@ class FimFic2Epub extends EventEmitter {
     const url = this.coverUrl || this.storyInfo.full_image
     if (!url) {
       console.warn('Story has no image. Generating one...')
-      let canvas
-      if (isNode) {
-        canvas = require('canvas').createCanvas(1080, 1440)
-      } else {
-        canvas = document.createElement('canvas')
-        canvas.width = 1080
-        canvas.height = 1440
-      }
-      const ctx = canvas.getContext('2d')
-      ctx.fillStyle = 'white'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-      ctx.fillStyle = 'black'
-      ctx.textAlign = 'center'
-      ctx.strokeStyle = 'black'
-
-      ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40)
-      ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24)
-
-      const title = this.storyInfo.title
-      const author = this.storyInfo.author.name
-
-      let fontSize = 150
-      let width
-      do {
-        ctx.font = 'bold ' + fontSize + 'px sans-serif'
-        width = ctx.measureText(title).width
-        fontSize -= 5
-      } while (width > canvas.width * 0.85)
-
-      ctx.fillText(title, canvas.width / 2, canvas.height * 0.2)
-      fontSize = 75
-      do {
-        ctx.font = fontSize + 'px sans-serif'
-        width = ctx.measureText(author).width
-        fontSize -= 5
-      } while (width > canvas.width * 0.7)
-
-      ctx.fillText(author, canvas.width / 2, canvas.height * 0.9)
-
-      return this.setCoverImage(Buffer.from(canvas.toDataURL('image/jpeg').split(',')[1], 'base64'))
+      return this.generateCoverImage()
     }
 
     this.progress(0, 0, 'Fetching cover image...')
 
     this.pcache.coverImage = fetchRemote(url, 'arraybuffer').then(async (data) => {
+      if (!data) {
+        return null
+      }
       data = isNode ? data : new Uint8Array(data)
       const info = await FileType.fromBuffer(data)
       if (info) {
@@ -762,12 +738,65 @@ class FimFic2Epub extends EventEmitter {
       } else {
         return null
       }
+    }).catch((err) => {
+      // Don't abort the whole build if the cover can't be downloaded
+      // (network error, blocked request, etc.). Fall back to a generated cover.
+      console.error('Error fetching cover image, generating a placeholder instead:', err)
+      return null
     }).then((data) => {
       this.pcache.coverImage = null
+      if (!data) {
+        return this.generateCoverImage()
+      }
       return data
     })
     return this.pcache.coverImage
   }
+
+  generateCoverImage () {
+    let canvas
+    if (isNode) {
+      canvas = require('canvas').createCanvas(1080, 1440)
+    } else {
+      canvas = document.createElement('canvas')
+      canvas.width = 1080
+      canvas.height = 1440
+    }
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = 'white'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.fillStyle = 'black'
+    ctx.textAlign = 'center'
+    ctx.strokeStyle = 'black'
+
+    ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40)
+    ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24)
+
+    const title = this.storyInfo.title
+    const author = this.storyInfo.author.name
+
+    let fontSize = 150
+    let width
+    do {
+      ctx.font = 'bold ' + fontSize + 'px sans-serif'
+      width = ctx.measureText(title).width
+      fontSize -= 5
+    } while (width > canvas.width * 0.85)
+
+    ctx.fillText(title, canvas.width / 2, canvas.height * 0.2)
+    fontSize = 75
+    do {
+      ctx.font = fontSize + 'px sans-serif'
+      width = ctx.measureText(author).width
+      fontSize -= 5
+    } while (width > canvas.width * 0.7)
+
+    ctx.fillText(author, canvas.width / 2, canvas.height * 0.9)
+
+    return this.setCoverImage(Buffer.from(canvas.toDataURL('image/jpeg').split(',')[1], 'base64'))
+  }
+
 
   fetchTitlePage () {
     let viewMature = true
