@@ -6,6 +6,8 @@ fimfic2epub
 ===========
 This is a tool to generate better EPUB ebooks from [Fimfiction](https://fimfiction.net/) stories. It's also a Chrome/Firefox extension, replacing the default EPUB download option with this tool. If you're on an Arch Linux-based system you can install it from the [Arch User Repository](https://aur.archlinux.org/packages/fimfic2epub/).
 
+Note: the author of this forked repository has only tested the Firefox extension -  it works to fix the cover fetching issue and skipping over embedded youtube links in some chapter parsing
+
 [Screenshot](http://i.imgbox.com/MalEBiuC.png) of the web extension
 
 
@@ -38,7 +40,7 @@ You can download the Chome extension from [Chrome Web Store](https://chrome.goog
 
 Installation & usage (command line)
 -------------------
-You can install the tool by running `npm install -g fimfic2epub`. On Arch Linux-based systems you can install it from the AUR like this: `yay -S fimfic2epub` (replace `yay` with your favorite AUR-helper)
+You can install the tool by running `npm install -g fimfic2epub`. npm (Node v14.17.3 lts/fermium) is currently the supported version for this build. On Arch Linux-based systems you can install it from the AUR like this: `yay -S fimfic2epub` (replace `yay` with your favorite AUR-helper)
 
 You can then run the tool it like this:
 
