@@ -35,8 +35,7 @@ You can have a look at what a generated EPUB looks like [here](http://books.djaz
 
 Usage (web extension)
 -----------------
-You can download the Chome extension from [Chrome Web Store](https://chrome.google.com/webstore/detail/fimfic2epub/fiijkoniocipeemlflajmmaecfhfcand) and [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/fimfic2epub/)
-
+For this forked repo, I set `xpinstall.signatures.required` to **false**. Then I ran `npm run build` and loaded the generated `extension.xpi` into Firefox.
 
 Installation & usage (command line)
 -------------------
